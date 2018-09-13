@@ -23,8 +23,25 @@ app.layout = html.Div(
             multi=True,
             placeholder="All Customers",
         ),
+        html.H1("Range Slider"),
+        html.Div(
+            [
+                dcc.RangeSlider(
+                    id="year_filter",
+                    min=client.years[0],
+                    max=client.years[-1],
+                    value=[client.years[0], client.years[-1]],
+                    step=1,
+                    allowCross=False,
+                    marks={year:str(year) for year in client.years},
+                )
+            ],
+            style={'height': '50px', 'padding-top': '20px', 'padding-bottom': '20px', 'display': 'block'},
+        ),
         dcc.Graph(id="total-sales-chart"),
         dcc.Graph(id="choropleth"),
+        dcc.Graph(id="scatterplot"),
+        dcc.Graph(id="piechart"),
     ],
 )
 
@@ -32,11 +49,13 @@ app.layout = html.Div(
     Output("total-sales-chart", "figure"),
     [
         Input("customer_filter", "value"),
+        Input("year_filter", "value"),
     ]
 )
-def make_sales_chart(customers):
+def make_sales_chart(customers, years):
     filters = {
         "customers": customers,
+        "years": years,
     }
     
     client.filter_dataframe(filters)
@@ -46,16 +65,52 @@ def make_sales_chart(customers):
 @app.callback(
     Output("choropleth", "figure"),
     [
-        Input("customer_filter", "value")
+        Input("customer_filter", "value"),
+        Input("year_filter", "value"),
     ]
 )
-def make_choropleth_chart(customers):
+def make_choropleth_chart(customers, years):
     filters = {
         "customers": customers,
+        "years": years,
     }
 
     client.filter_dataframe(filters)
     figure = client.make_choropleth_chart()
+    return figure
+
+@app.callback(
+    Output("scatterplot", "figure"),
+    [
+        Input("customer_filter", "value"),
+        Input("year_filter", "value"),
+    ]
+)
+def make_scatterplot(customers, years):
+    filters = {
+        "customers": customers,
+        "years": years,
+    }
+
+    client.filter_dataframe(filters)
+    figure = client.make_scatterplot()
+    return figure
+
+@app.callback(
+    Output("piechart", "figure"),
+    [
+        Input("customer_filter", "value"),
+        Input("year_filter", "value"),
+    ]
+)
+def make_piechart(customers, years):
+    filters = {
+        "customers": customers,
+        "years": years,
+    }
+
+    client.filter_dataframe(filters)
+    figure = client.make_piechart()
     return figure
 
 if __name__ == '__main__':

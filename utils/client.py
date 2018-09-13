@@ -6,6 +6,8 @@ import json
 import numpy as np
 import pandas as pd
 
+import plotly.graph_objs as go
+
 scl = [[0.0, 'rgb(242,240,247)'],[0.2, 'rgb(218,218,235)'],[0.4, 'rgb(188,189,220)'],\
             [0.6, 'rgb(158,154,200)'],[0.8, 'rgb(117,107,177)'],[1.0, 'rgb(84,39,143)']]
 
@@ -15,6 +17,7 @@ class Client(object):
 		self.unfiltered_df = self._load_data()
 		self.filtered_df = self.unfiltered_df.copy()
 		self.unique_customers = self.unfiltered_df["Customer Name"].unique()
+		self.years = sorted(self.unfiltered_df["Year"].unique())
 
 	def _load_data(self):
 		# load data from xlsx file and add calculated cols
@@ -41,7 +44,10 @@ class Client(object):
 			customers = [str(i) for i in self.filters["customers"]]
 			customer_bool = (df["Customer Name"].isin(customers)) 
 
-		filters = customer_bool
+		start_bool = (df["Year"] >= self.filters["years"][0])
+		end_bool = (df["Year"] <= self.filters["years"][1])
+
+		filters = customer_bool & start_bool & end_bool
 		dff = df.loc[filters].reset_index(drop=True)
 		self.filtered_df = dff
 
@@ -57,11 +63,7 @@ class Client(object):
     		)
     	]
 
-		layout = [
-			dict(
-				title="Total Sales by Category"
-			)
-		]
+		layout = {'title': 'Total Sales by Category'}
 
 		figure = dict(data=traces, layout=layout)
 		return figure
@@ -104,135 +106,63 @@ class Client(object):
 		figure = dict(data=data, layout=layout)
 		return figure
 
-	def make_scatter(self):
-		# scatterplot showing sales vs profits, animated over time
+	def make_scatterplot(self):
+		# scatterplot showing sales vs profits
 		# show by subcategory and color by category
+		categories = sorted(self.filtered_df["Category"].unique())
+		data = []
 
-		years = sorted(self.unfiltered_df["Year"].unique())
+		for category in categories:
+			dff = self.filtered_df.copy().loc[self.filtered_df["Category"] == category]
+			grouped = dff.groupby("Sub-Category")["Sales","Profit"].sum()
+			data.append(
+				go.Scatter(
+		            x=grouped["Sales"].values,
+		            y=grouped["Profit"].values,
+		            text=grouped.index,
+		            mode='markers',
+		            opacity=0.7,
+		            marker={
+		                'size': 15,
+		                'line': {'width': 0.5, 'color': 'white'}
+		            },
+		            name=category
+		        )
+		    )
+
+		layout = {
+		    'title': 'Profit vs Sales by Sub-Category',
+		    'xaxis': {'title': 'Sales'},
+		    'yaxis': {'title': 'Profit'},
+		    'hovermode': 'closest',
+		}
 
 		figure = {
-		    'data': [],
-		    'layout': {},
-		    'frames': []
+		    'data': data,
+		    'layout': layout,
 		}
 
-		figure['layout']['xaxis'] = {'title': 'Sales'}
-		figure['layout']['yaxis'] = {'title': 'Profit'}
-		figure['layout']['hovermode'] = 'closest'
-		
-		figure['layout']['sliders'] = {
-		    'args': [
-		        'transition', {
-		            'duration': 400,
-		            'easing': 'cubic-in-out'
-		        }
-		    ],
-		    'initialValue': years[0],
-		    'plotlycommand': 'animate',
-		    'values': years,
-		    'visible': True
+		return figure
+
+	def make_piechart(self):
+		# make a pie chart showing sales by region
+
+		layout = {
+			'title': 'Sales by Region',
+			'showlegend': False,
 		}
 
-		figure['layout']['updatemenus'] = [
-		    {
-		        'buttons': [
-		            {
-		                'args': [None, {'frame': {'duration': 500, 'redraw': False},
-		                         'fromcurrent': True, 'transition': {'duration': 300, 'easing': 'quadratic-in-out'}}],
-		                'label': 'Play',
-		                'method': 'animate'
-		            },
-		            {
-		                'args': [[None], {'frame': {'duration': 0, 'redraw': False}, 'mode': 'immediate',
-		                'transition': {'duration': 0}}],
-		                'label': 'Pause',
-		                'method': 'animate'
-		            }
-		        ],
-		        'direction': 'left',
-		        'pad': {'r': 10, 't': 87},
-		        'showactive': False,
-		        'type': 'buttons',
-		        'x': 0.1,
-		        'xanchor': 'right',
-		        'y': 0,
-		        'yanchor': 'top'
-		    }
-		]
+		grouped = self.filtered_df.copy().groupby(["Region"])["Sales"].sum()
+		data = [{
+			'values': grouped.values,
+			'text': grouped.index,
+			'type': 'pie',
+			'hoverinfo': 'text+value',
+		}]
 
-		sliders_dict = {
-		    'active': 0,
-		    'yanchor': 'top',
-		    'xanchor': 'left',
-		    'currentvalue': {
-		        'font': {'size': 20},
-		        'prefix': 'Year:',
-		        'visible': True,
-		        'xanchor': 'right'
-		    },
-		    'transition': {'duration': 300, 'easing': 'cubic-in-out'},
-		    'pad': {'b': 10, 't': 50},
-		    'len': 0.9,
-		    'x': 0.1,
-		    'y': 0,
-		    'steps': []
+		figure = {
+			'data': data,
+			'layout': layout,
 		}
-
-		# make list of categories
-		categories = self.filtered_df["Category"].unique()
-
-		# make data
-		year = years[0]
-		for category in categories:
-		    dataset_by_year = dataset[dataset['year'] == year]
-		    dataset_by_year_and_cont = dataset_by_year[dataset_by_year['continent'] == continent]
-
-		    data_dict = {
-		        'x': list(dataset_by_year_and_cont['lifeExp']),
-		        'y': list(dataset_by_year_and_cont['gdpPercap']),
-		        'mode': 'markers',
-		        'text': list(dataset_by_year_and_cont['country']),
-		        'marker': {
-		            'sizemode': 'area',
-		            'sizeref': 200000,
-		            'size': list(dataset_by_year_and_cont['pop'])
-		        },
-		        'name': continent
-		    }
-		    figure['data'].append(data_dict)
-		    
-		# make frames
-		for year in years:
-		    frame = {'data': [], 'name': str(year)}
-		    for continent in continents:
-		        dataset_by_year = dataset[dataset['year'] == int(year)]
-		        dataset_by_year_and_cont = dataset_by_year[dataset_by_year['continent'] == continent]
-
-		        data_dict = {
-		            'x': list(dataset_by_year_and_cont['lifeExp']),
-		            'y': list(dataset_by_year_and_cont['gdpPercap']),
-		            'mode': 'markers',
-		            'text': list(dataset_by_year_and_cont['country']),
-		            'marker': {
-		                'sizemode': 'area',
-		                'sizeref': 200000,
-		                'size': list(dataset_by_year_and_cont['pop'])
-		            },
-		            'name': continent
-		        }
-		        frame['data'].append(data_dict)
-
-		    figure['frames'].append(frame)
-		    slider_step = {'args': [
-		        [year],
-		        {'frame': {'duration': 300, 'redraw': False},
-		         'mode': 'immediate',
-		       'transition': {'duration': 300}}
-		     ],
-		     'label': year,
-		     'method': 'animate'}
-		    sliders_dict['steps'].append(slider_step)
-
-		figure['layout']['sliders'] = [sliders_dict]
 
 		return figure
