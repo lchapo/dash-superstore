@@ -23,6 +23,21 @@ app.layout = html.Div(
             multi=True,
             placeholder="All Customers",
         ),
+        html.H1("Range Slider"),
+        html.Div(
+            [
+                dcc.RangeSlider(
+                    id="year_filter",
+                    min=client.years[0],
+                    max=client.years[-1],
+                    value=[client.years[0], client.years[-1]],
+                    step=1,
+                    allowCross=False,
+                    marks={year:str(year) for year in client.years},
+                )
+            ],
+            style={'height': '50px', 'padding-top': '20px', 'padding-bottom': '20px', 'display': 'block'},
+        ),
         dcc.Graph(id="total-sales-chart"),
         dcc.Graph(id="choropleth"),
         dcc.Graph(id="scatterplot"),

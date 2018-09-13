@@ -60,11 +60,7 @@ class Client(object):
     		)
     	]
 
-		layout = [
-			dict(
-				title="Total Sales by Category"
-			)
-		]
+		layout = {'title': 'Total Sales by Category'}
 
 		figure = dict(data=traces, layout=layout)
 		return figure
@@ -132,6 +128,7 @@ class Client(object):
 		    )
 
 		layout = {
+		    'title': 'Profit vs Sales by Sub-Category',
 		    'xaxis': {'title': 'Sales'},
 		    'yaxis': {'title': 'Profit'},
 		    'hovermode': 'closest',
