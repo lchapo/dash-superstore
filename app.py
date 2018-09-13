@@ -41,6 +41,7 @@ app.layout = html.Div(
         dcc.Graph(id="total-sales-chart"),
         dcc.Graph(id="choropleth"),
         dcc.Graph(id="scatterplot"),
+        dcc.Graph(id="piechart"),
     ],
 )
 
@@ -93,6 +94,23 @@ def make_scatterplot(customers, years):
 
     client.filter_dataframe(filters)
     figure = client.make_scatterplot()
+    return figure
+
+@app.callback(
+    Output("piechart", "figure"),
+    [
+        Input("customer_filter", "value"),
+        Input("year_filter", "value"),
+    ]
+)
+def make_piechart(customers, years):
+    filters = {
+        "customers": customers,
+        "years": years,
+    }
+
+    client.filter_dataframe(filters)
+    figure = client.make_piechart()
     return figure
 
 if __name__ == '__main__':

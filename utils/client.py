@@ -143,3 +143,26 @@ class Client(object):
 		}
 
 		return figure
+
+	def make_piechart(self):
+		# make a pie chart showing sales by region
+
+		layout = {
+			'title': 'Sales by Region',
+			'showlegend': False,
+		}
+
+		grouped = self.filtered_df.copy().groupby(["Region"])["Sales"].sum()
+		data = [{
+			'values': grouped.values,
+			'text': grouped.index,
+			'type': 'pie',
+			'hoverinfo': 'text+value',
+		}]
+
+		figure = {
+			'data': data,
+			'layout': layout,
+		}
+
+		return figure
