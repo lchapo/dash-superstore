@@ -6,6 +6,8 @@ import json
 import numpy as np
 import pandas as pd
 
+import plotly.graph_objs as go
+
 scl = [[0.0, 'rgb(242,240,247)'],[0.2, 'rgb(218,218,235)'],[0.4, 'rgb(188,189,220)'],\
             [0.6, 'rgb(158,154,200)'],[0.8, 'rgb(117,107,177)'],[1.0, 'rgb(84,39,143)']]
 
@@ -16,7 +18,6 @@ class Client(object):
 		self.filtered_df = self.unfiltered_df.copy()
 		self.unique_customers = self.unfiltered_df["Customer Name"].unique()
 		self.years = sorted(self.unfiltered_df["Year"].unique())
-		self.categories = sorted(self.unfiltered_df["Category"].unique())
 
 	def _load_data(self):
 		# load data from xlsx file and add calculated cols
@@ -106,93 +107,39 @@ class Client(object):
 		figure = dict(data=data, layout=layout)
 		return figure
 
-	def _get_totals_by_subcategory(self, df):
-	    # helper function to make scatter plot
-	    data = []
-	    for category in self.categories:
-	        grouped = df.copy().loc[df["Category"] == category].groupby("Sub-Category")["Sales","Profit"].sum()
-	        data.append({
-	            'x': grouped.Sales.values,
-	            'y': grouped.Profit.values,
-	            'mode':'markers',
-	            'text': grouped.index,
-	            'name': category,
-	        })
-	    return data
-
 	def make_scatterplot(self):
-		# scatterplot showing sales vs profits, animated over time
+		# scatterplot showing sales vs profits
 		# show by subcategory and color by category
+		categories = sorted(self.filtered_df["Category"].unique())
+		data = []
 
-		frames = []
-
-		for year in self.years:
-		    dff = self.filtered_df.copy().loc[self.filtered_df["Year"] == year]
-		    
-		    frames.append(
-		        {
-		            'name': str(year),
-		            'data': self._get_totals_by_subcategory(dff),
-		        }
+		for category in categories:
+			dff = self.filtered_df.copy().loc[self.filtered_df["Category"] == category]
+			grouped = dff.groupby("Sub-Category")["Sales","Profit"].sum()
+			data.append(
+				go.Scatter(
+		            x=grouped["Sales"].values,
+		            y=grouped["Profit"].values,
+		            text=grouped.index,
+		            mode='markers',
+		            opacity=0.7,
+		            marker={
+		                'size': 15,
+		                'line': {'width': 0.5, 'color': 'white'}
+		            },
+		            name=category
+		        )
 		    )
-
-		duration = 1000
-
-		steps = []
-		for year in self.years:
-		    steps.append(
-		        {'args': [[year],
-		        {'frame': {'duration': duration, 'redraw': False},
-		         'mode': 'immediate',
-		         'transition': {'duration': duration}}],
-		       'label': str(year),
-		       'method': 'animate'}
-		    )
-
-		sliders = [{'active': 0,
-		    'yanchor': 'top',
-		    'xanchor': 'left',
-		    'currentvalue': {
-		        'font': {'size': 20},
-		        'prefix': 'Year:',
-		        'visible': True,
-		        'xanchor': 'right'
-		    },
-		    'transition': {
-		        'duration': duration,
-		        'easing': 'cubic-in-out'
-		    },
-		    'pad': {
-		        'b': 10,
-		        't': 50
-		    },
-		    'len': 0.9,
-		    'x': .05,
-		    'y': 0,
-		    'steps': steps
-		}]
-
-		ymax = self.filtered_df.groupby(["Year","Sub-Category"])["Profit"].sum().max()
-		ymin = self.filtered_df.groupby(["Year","Sub-Category"])["Profit"].sum().min()
-		xmax = self.filtered_df.groupby(["Year","Sub-Category"])["Sales"].sum().max()
 
 		layout = {
-		    'xaxis': {
-		        'title': 'Sales',
-		        'range': [0, xmax * 1.15]
-		    },
-		    'yaxis': {
-		        'title': 'Profit',
-		        'range': [ymin - ymax * .15, ymax * 1.15],
-		    },
+		    'xaxis': {'title': 'Sales'},
+		    'yaxis': {'title': 'Profit'},
 		    'hovermode': 'closest',
-		    'sliders': sliders,
 		}
 
 		figure = {
-		    'data': frames[0]['data'],
+		    'data': data,
 		    'layout': layout,
-		    'frames': frames,
 		}
 
 		return figure
