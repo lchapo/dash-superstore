@@ -48,11 +48,13 @@ app.layout = html.Div(
     Output("total-sales-chart", "figure"),
     [
         Input("customer_filter", "value"),
+        Input("year_filter", "value"),
     ]
 )
-def make_sales_chart(customers):
+def make_sales_chart(customers, years):
     filters = {
         "customers": customers,
+        "years": years,
     }
     
     client.filter_dataframe(filters)
@@ -62,12 +64,14 @@ def make_sales_chart(customers):
 @app.callback(
     Output("choropleth", "figure"),
     [
-        Input("customer_filter", "value")
+        Input("customer_filter", "value"),
+        Input("year_filter", "value"),
     ]
 )
-def make_choropleth_chart(customers):
+def make_choropleth_chart(customers, years):
     filters = {
         "customers": customers,
+        "years": years,
     }
 
     client.filter_dataframe(filters)
@@ -78,11 +82,13 @@ def make_choropleth_chart(customers):
     Output("scatterplot", "figure"),
     [
         Input("customer_filter", "value"),
+        Input("year_filter", "value"),
     ]
 )
-def make_scatterplot(customers):
+def make_scatterplot(customers, years):
     filters = {
         "customers": customers,
+        "years": years,
     }
 
     client.filter_dataframe(filters)

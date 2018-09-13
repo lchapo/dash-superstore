@@ -44,7 +44,10 @@ class Client(object):
 			customers = [str(i) for i in self.filters["customers"]]
 			customer_bool = (df["Customer Name"].isin(customers)) 
 
-		filters = customer_bool
+		start_bool = (df["Year"] >= self.filters["years"][0])
+		end_bool = (df["Year"] <= self.filters["years"][1])
+
+		filters = customer_bool & start_bool & end_bool
 		dff = df.loc[filters].reset_index(drop=True)
 		self.filtered_df = dff
 
