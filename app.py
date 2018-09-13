@@ -25,6 +25,7 @@ app.layout = html.Div(
         ),
         dcc.Graph(id="total-sales-chart"),
         dcc.Graph(id="choropleth"),
+        dcc.Graph(id="scatterplot"),
     ],
 )
 
@@ -56,6 +57,21 @@ def make_choropleth_chart(customers):
 
     client.filter_dataframe(filters)
     figure = client.make_choropleth_chart()
+    return figure
+
+@app.callback(
+    Output("scatterplot", "figure"),
+    [
+        Input("customer_filter", "value"),
+    ]
+)
+def make_scatterplot(customers):
+    filters = {
+        "customers": customers,
+    }
+
+    client.filter_dataframe(filters)
+    figure = client.make_scatterplot()
     return figure
 
 if __name__ == '__main__':

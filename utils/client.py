@@ -15,6 +15,8 @@ class Client(object):
 		self.unfiltered_df = self._load_data()
 		self.filtered_df = self.unfiltered_df.copy()
 		self.unique_customers = self.unfiltered_df["Customer Name"].unique()
+		self.years = sorted(self.unfiltered_df["Year"].unique())
+		self.categories = sorted(self.unfiltered_df["Category"].unique())
 
 	def _load_data(self):
 		# load data from xlsx file and add calculated cols
@@ -104,64 +106,50 @@ class Client(object):
 		figure = dict(data=data, layout=layout)
 		return figure
 
-	def make_scatter(self):
+	def _get_totals_by_subcategory(self, df):
+	    # helper function to make scatter plot
+	    data = []
+	    for category in self.categories:
+	        grouped = df.copy().loc[df["Category"] == category].groupby("Sub-Category")["Sales","Profit"].sum()
+	        data.append({
+	            'x': grouped.Sales.values,
+	            'y': grouped.Profit.values,
+	            'mode':'markers',
+	            'text': grouped.index,
+	            'name': category,
+	        })
+	    return data
+
+	def make_scatterplot(self):
 		# scatterplot showing sales vs profits, animated over time
 		# show by subcategory and color by category
 
-		years = sorted(self.unfiltered_df["Year"].unique())
+		frames = []
 
-		figure = {
-		    'data': [],
-		    'layout': {},
-		    'frames': []
-		}
-
-		figure['layout']['xaxis'] = {'title': 'Sales'}
-		figure['layout']['yaxis'] = {'title': 'Profit'}
-		figure['layout']['hovermode'] = 'closest'
-		
-		figure['layout']['sliders'] = {
-		    'args': [
-		        'transition', {
-		            'duration': 400,
-		            'easing': 'cubic-in-out'
+		for year in self.years:
+		    dff = self.filtered_df.copy().loc[self.filtered_df["Year"] == year]
+		    
+		    frames.append(
+		        {
+		            'name': str(year),
+		            'data': self._get_totals_by_subcategory(dff),
 		        }
-		    ],
-		    'initialValue': years[0],
-		    'plotlycommand': 'animate',
-		    'values': years,
-		    'visible': True
-		}
+		    )
 
-		figure['layout']['updatemenus'] = [
-		    {
-		        'buttons': [
-		            {
-		                'args': [None, {'frame': {'duration': 500, 'redraw': False},
-		                         'fromcurrent': True, 'transition': {'duration': 300, 'easing': 'quadratic-in-out'}}],
-		                'label': 'Play',
-		                'method': 'animate'
-		            },
-		            {
-		                'args': [[None], {'frame': {'duration': 0, 'redraw': False}, 'mode': 'immediate',
-		                'transition': {'duration': 0}}],
-		                'label': 'Pause',
-		                'method': 'animate'
-		            }
-		        ],
-		        'direction': 'left',
-		        'pad': {'r': 10, 't': 87},
-		        'showactive': False,
-		        'type': 'buttons',
-		        'x': 0.1,
-		        'xanchor': 'right',
-		        'y': 0,
-		        'yanchor': 'top'
-		    }
-		]
+		duration = 1000
 
-		sliders_dict = {
-		    'active': 0,
+		steps = []
+		for year in self.years:
+		    steps.append(
+		        {'args': [[year],
+		        {'frame': {'duration': duration, 'redraw': False},
+		         'mode': 'immediate',
+		         'transition': {'duration': duration}}],
+		       'label': str(year),
+		       'method': 'animate'}
+		    )
+
+		sliders = [{'active': 0,
 		    'yanchor': 'top',
 		    'xanchor': 'left',
 		    'currentvalue': {
@@ -170,69 +158,41 @@ class Client(object):
 		        'visible': True,
 		        'xanchor': 'right'
 		    },
-		    'transition': {'duration': 300, 'easing': 'cubic-in-out'},
-		    'pad': {'b': 10, 't': 50},
+		    'transition': {
+		        'duration': duration,
+		        'easing': 'cubic-in-out'
+		    },
+		    'pad': {
+		        'b': 10,
+		        't': 50
+		    },
 		    'len': 0.9,
-		    'x': 0.1,
+		    'x': .05,
 		    'y': 0,
-		    'steps': []
+		    'steps': steps
+		}]
+
+		ymax = self.filtered_df.groupby(["Year","Sub-Category"])["Profit"].sum().max()
+		ymin = self.filtered_df.groupby(["Year","Sub-Category"])["Profit"].sum().min()
+		xmax = self.filtered_df.groupby(["Year","Sub-Category"])["Sales"].sum().max()
+
+		layout = {
+		    'xaxis': {
+		        'title': 'Sales',
+		        'range': [0, xmax * 1.15]
+		    },
+		    'yaxis': {
+		        'title': 'Profit',
+		        'range': [ymin - ymax * .15, ymax * 1.15],
+		    },
+		    'hovermode': 'closest',
+		    'sliders': sliders,
 		}
 
-		# make list of categories
-		categories = self.filtered_df["Category"].unique()
-
-		# make data
-		year = years[0]
-		for category in categories:
-		    dataset_by_year = dataset[dataset['year'] == year]
-		    dataset_by_year_and_cont = dataset_by_year[dataset_by_year['continent'] == continent]
-
-		    data_dict = {
-		        'x': list(dataset_by_year_and_cont['lifeExp']),
-		        'y': list(dataset_by_year_and_cont['gdpPercap']),
-		        'mode': 'markers',
-		        'text': list(dataset_by_year_and_cont['country']),
-		        'marker': {
-		            'sizemode': 'area',
-		            'sizeref': 200000,
-		            'size': list(dataset_by_year_and_cont['pop'])
-		        },
-		        'name': continent
-		    }
-		    figure['data'].append(data_dict)
-		    
-		# make frames
-		for year in years:
-		    frame = {'data': [], 'name': str(year)}
-		    for continent in continents:
-		        dataset_by_year = dataset[dataset['year'] == int(year)]
-		        dataset_by_year_and_cont = dataset_by_year[dataset_by_year['continent'] == continent]
-
-		        data_dict = {
-		            'x': list(dataset_by_year_and_cont['lifeExp']),
-		            'y': list(dataset_by_year_and_cont['gdpPercap']),
-		            'mode': 'markers',
-		            'text': list(dataset_by_year_and_cont['country']),
-		            'marker': {
-		                'sizemode': 'area',
-		                'sizeref': 200000,
-		                'size': list(dataset_by_year_and_cont['pop'])
-		            },
-		            'name': continent
-		        }
-		        frame['data'].append(data_dict)
-
-		    figure['frames'].append(frame)
-		    slider_step = {'args': [
-		        [year],
-		        {'frame': {'duration': 300, 'redraw': False},
-		         'mode': 'immediate',
-		       'transition': {'duration': 300}}
-		     ],
-		     'label': year,
-		     'method': 'animate'}
-		    sliders_dict['steps'].append(slider_step)
-
-		figure['layout']['sliders'] = [sliders_dict]
+		figure = {
+		    'data': frames[0]['data'],
+		    'layout': layout,
+		    'frames': frames,
+		}
 
 		return figure
